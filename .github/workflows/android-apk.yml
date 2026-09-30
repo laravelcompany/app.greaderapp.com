@@ -12,8 +12,9 @@ permissions:
 
 jobs:
   apk:
-    # Always GitHub-hosted: ubuntu-latest images ship the Android SDK,
-    # build-tools and cmdline-tools preinstalled.
+    # Self-hosted runner: the runner image ships no Android SDK, so the
+    # setup-android step below provisions cmdline-tools and accepts licenses
+    # (AGP then auto-downloads the platform/build-tools it needs).
     runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
@@ -27,6 +28,8 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
+
+      - uses: android-actions/setup-android@v3
 
       - run: npm ci
 
