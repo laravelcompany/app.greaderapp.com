@@ -30,20 +30,23 @@ jobs:
           java-version: '21'
 
       # android-actions/setup-android fails on the deprecated "tools" package
-      # with newer cmdline-tools, so provision the SDK by hand.
-      - name: Install Android SDK cmdline-tools
+      # with newer cmdline-tools, so provision the SDK by hand. The SDK dir is
+      # chowned to the runner user: sdkmanager needs JAVA_HOME (sudo drops it)
+      # and AGP later auto-downloads platforms into this dir.
+      - name: Install Android SDK cmdline-tools and accept licenses
         run: |
-          set -euo pipefail
+          set -eo pipefail
           SDK=/usr/local/lib/android/sdk
           sudo mkdir -p "$SDK/cmdline-tools"
           curl -fsSL https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -o /tmp/ct.zip
           sudo unzip -q /tmp/ct.zip -d /tmp/ct
           sudo mv /tmp/ct/cmdline-tools "$SDK/cmdline-tools/latest"
+          sudo chown -R "$(id -u):$(id -g)" "$SDK"
           echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
           echo "ANDROID_SDK_ROOT=$SDK" >> "$GITHUB_ENV"
           echo "$SDK/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
-      - name: Accept Android SDK licenses
-        run: yes | sudo "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null
+          set +o pipefail  # yes dies by SIGPIPE once sdkmanager stops reading
+          yes | "$SDK/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null
 
       - run: npm ci
 
