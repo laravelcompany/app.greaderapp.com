@@ -29,7 +29,21 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      - uses: android-actions/setup-android@v3
+      # android-actions/setup-android fails on the deprecated "tools" package
+      # with newer cmdline-tools, so provision the SDK by hand.
+      - name: Install Android SDK cmdline-tools
+        run: |
+          set -euo pipefail
+          SDK=/usr/local/lib/android/sdk
+          sudo mkdir -p "$SDK/cmdline-tools"
+          curl -fsSL https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -o /tmp/ct.zip
+          sudo unzip -q /tmp/ct.zip -d /tmp/ct
+          sudo mv /tmp/ct/cmdline-tools "$SDK/cmdline-tools/latest"
+          echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$SDK" >> "$GITHUB_ENV"
+          echo "$SDK/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
+      - name: Accept Android SDK licenses
+        run: yes | sudo "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null
 
       - run: npm ci
 
