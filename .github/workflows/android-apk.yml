@@ -37,9 +37,12 @@ jobs:
         run: |
           set -eo pipefail
           SDK=/usr/local/lib/android/sdk
+          # Re-runnable on a persistent runner: clear leftovers from earlier runs
+          # (a stale /tmp/ct makes unzip prompt for overwrite and fail without a tty).
           sudo mkdir -p "$SDK/cmdline-tools"
+          sudo rm -rf /tmp/ct /tmp/ct.zip "$SDK/cmdline-tools/latest"
           curl -fsSL https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -o /tmp/ct.zip
-          sudo unzip -q /tmp/ct.zip -d /tmp/ct
+          sudo unzip -oq /tmp/ct.zip -d /tmp/ct
           sudo mv /tmp/ct/cmdline-tools "$SDK/cmdline-tools/latest"
           sudo chown -R "$(id -u):$(id -g)" "$SDK"
           echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
