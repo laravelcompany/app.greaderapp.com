@@ -64,3 +64,16 @@ describe('JSON Feed plain-text content', () => {
     expect(feed.items[1].content).toBe('A &lt; B &amp; C');
   });
 });
+
+
+describe('Atom media enclosures', () => {
+  it('finds audio/video rel=enclosure links while preserving the article alternate URL', () => {
+    const feed = new FeedParserService().parse(`<feed xmlns="http://www.w3.org/2005/Atom"><title>Podcast</title><entry><id>episode</id><title>Episode</title><link rel="enclosure" type="audio/mpeg" href="https://media.test/episode.mp3"/><link rel="enclosure" type="video/mp4" href="https://media.test/episode.mp4"/><link rel="alternate" href="https://show.test/episode"/></entry></feed>`);
+    expect(feed.items[0]).toMatchObject({ link: 'https://show.test/episode', audio: 'https://media.test/episode.mp3', video: 'https://media.test/episode.mp4' });
+  });
+  it('ignores non-media enclosure types and unrelated links', () => {
+    const feed = new FeedParserService().parse(`<feed xmlns="http://www.w3.org/2005/Atom"><title>N</title><entry><id>x</id><link rel="alternate" type="audio/mpeg" href="https://site.test/x"/><link rel="enclosure" type="application/pdf" href="https://site.test/doc.pdf"/></entry></feed>`);
+    expect(feed.items[0].audio).toBeUndefined();
+    expect(feed.items[0].video).toBeUndefined();
+  });
+});

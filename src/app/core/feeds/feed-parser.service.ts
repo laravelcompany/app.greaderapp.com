@@ -81,7 +81,10 @@ export class FeedParserService {
   private item(item: any): ParsedFeedItem {
     const link = this.link(item.link);
     const content = this.text(item.encoded ?? item.content ?? item.description ?? item.summary);
-    const enclosures = this.array<any>(item.enclosure);
+    const enclosures = [
+      ...this.array<any>(item.enclosure),
+      ...this.array<any>(item.link).filter(value => value?.['@_rel'] === 'enclosure').map(value => ({ '@_url': value['@_href'], '@_type': value['@_type'] })),
+    ];
     const media = this.array<any>(item.content).filter(value => value && typeof value === 'object' && value['@_url']);
     const audio = [...enclosures, ...media].find(value => String(value?.['@_type'] ?? '').startsWith('audio/'))?.['@_url'];
     const video = [...enclosures, ...media].find(value => String(value?.['@_type'] ?? '').startsWith('video/'))?.['@_url'];
