@@ -131,7 +131,8 @@ export class FeedParserService {
   /** Missing/unparseable dates read as now; dates in the future (bad server clocks, scheduled posts) are capped at now so they don't pin to the top. */
   private date(value: any) { const parsed = Date.parse(this.text(value).trim()); const now = Date.now(); return Number.isNaN(parsed) ? now : Math.min(parsed, now); }
   private link(value: any) {
-    if (Array.isArray(value)) value = value.find(item => !item?.['@_rel'] || item['@_rel'] === 'alternate') ?? value[0];
+    if (Array.isArray(value)) value = value.find(item => !item?.['@_rel'] || item['@_rel'] === 'alternate');
+    if (value == null || (value?.['@_rel'] && value['@_rel'] !== 'alternate')) return undefined;
     return typeof value === 'string' ? value : value?.['@_href'] ?? value?.['@_resource'] ?? this.text(value);
   }
   private text(value: any): string {

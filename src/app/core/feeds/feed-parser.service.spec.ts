@@ -77,3 +77,27 @@ describe('Atom media enclosures', () => {
     expect(feed.items[0].video).toBeUndefined();
   });
 });
+
+
+describe('Atom article link selection', () => {
+  const parser = new FeedParserService();
+  const atom = (links: string) => parser.parse(`<feed><title>Feed</title>${links}<entry><id>episode</id><title>Episode</title>${links}</entry></feed>`);
+  it('does not treat a lone audio enclosure as an article or homepage link', () => {
+    const feed = atom('<link rel="enclosure" type="audio/mpeg" href="https://media.test/audio.mp3"/>');
+    expect(feed.link).toBeUndefined();
+    expect(feed.items[0].link).toBeUndefined();
+    expect(feed.items[0].audio).toBe('https://media.test/audio.mp3');
+    expect(feed.items[0].uid).toBe('episode');
+  });
+  it('does not fall back to self or enclosure when no alternate exists', () => {
+    const feed = atom('<link rel="self" href="https://site.test/feed.xml"/><link rel="enclosure" type="video/mp4" href="https://media.test/video.mp4"/>');
+    expect(feed.link).toBeUndefined();
+    expect(feed.items[0].link).toBeUndefined();
+    expect(feed.items[0].video).toBe('https://media.test/video.mp4');
+  });
+  it('accepts an omitted rel as an alternate while ignoring a self link', () => {
+    const feed = atom('<link rel="self" href="https://site.test/feed.xml"/><link href="https://site.test/article"/>');
+    expect(feed.link).toBe('https://site.test/article');
+    expect(feed.items[0].link).toBe('https://site.test/article');
+  });
+});
