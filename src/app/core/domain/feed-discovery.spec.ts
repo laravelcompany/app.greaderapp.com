@@ -38,3 +38,30 @@ describe('feedUrlKey', () => {
     expect(feedUrlKey(undefined)).toBe('');
   });
 });
+
+
+describe('website feed metadata', () => {
+  it('decodes HTML entities in feed URLs and titles', () => {
+    expect(discoverFeedLinks('<link rel="alternate" type="application/rss+xml" href="/rss?a=1&amp;b=2" title="News &amp; Views">', 'https://example.com/')).toEqual([
+      { url: 'https://example.com/rss?a=1&b=2', title: 'News & Views' },
+    ]);
+  });
+  it('supports unquoted attributes, mixed-case tokens and MIME parameters', () => {
+    expect(discoverFeedLinks('<link rel="ALTERNATE stylesheet" type="Application/Atom+Xml; charset=utf-8" href=/atom>', 'https://example.com/')[0].url).toBe('https://example.com/atom');
+  });
+  it('ignores comments, prefix lookalikes and non-HTTP feed links', () => {
+    const links = discoverFeedLinks(`<!-- <link rel="alternate" type="application/rss+xml" href="/fake"> -->
+      <link data-href="/wrong" rel="alternately" type="application/rss+xml" href="/bad">
+      <link rel="alternate" type="application/rss+xml" href="javascript:alert(1)">
+      <link rel="alternate" type="application/rss+xml" href="data:text/xml,test">
+      <link rel="alternate" type="application/rss+xml.fake" href="/mime-lookalike">`, 'https://example.com/');
+    expect(links.map(l => l.url)).toContain('https://example.com/feed');
+    expect(links.every(l => /^https:\/\/example.com\//.test(l.url))).toBe(true);
+    expect(links.map(l => l.url)).not.toContain('https://example.com/fake');
+    expect(links.map(l => l.url)).not.toContain('https://example.com/mime-lookalike');
+  });
+  it('deduplicates advertised URLs without confusing data attributes with href', () => {
+    const links = discoverFeedLinks('<link rel="alternate" type="application/rss+xml" data-href="/wrong" href="/rss"><link rel="alternate" type="application/atom+xml" href="https://example.com/rss">', 'https://example.com/');
+    expect(links).toEqual([{ url: 'https://example.com/rss', title: undefined }]);
+  });
+});

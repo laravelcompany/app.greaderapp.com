@@ -9,15 +9,22 @@ const FEED_TYPES = ['application/rss+xml', 'application/atom+xml', 'application/
  */
 export function discoverFeedLinks(html: string, pageUrl: string): FeedLink[] {
   const found: FeedLink[] = [];
-  const linkTags = html.match(/<link\b[^>]*>/gi) ?? [];
-  for (const tag of linkTags) {
-    if (!/rel\s*=\s*["'][^"']*alternate/i.test(tag)) continue;
-    const type = attr(tag, 'type')?.toLowerCase();
-    if (!type || !FEED_TYPES.some(t => type.includes(t))) continue;
-    const href = attr(tag, 'href');
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const seen = new Set<string>();
+  // Read only advertised feed metadata. DOM parsing decodes entities and
+  // supports unquoted attributes without fetching or executing page content.
+  for (const link of doc.querySelectorAll('link')) {
+    const rel = (link.getAttribute('rel') ?? '').toLowerCase().split(/\s+/);
+    if (!rel.includes('alternate')) continue;
+    const type = (link.getAttribute('type') ?? '').split(';')[0].trim().toLowerCase();
+    if (!FEED_TYPES.includes(type)) continue;
+    const href = link.getAttribute('href')?.trim();
     if (!href) continue;
     try {
-      found.push({ url: new URL(href, pageUrl).toString(), title: attr(tag, 'title') });
+      const url = new URL(href, pageUrl);
+      if (!['http:', 'https:'].includes(url.protocol) || seen.has(url.href)) continue;
+      seen.add(url.href);
+      found.push({ url: url.href, title: link.getAttribute('title') ?? undefined });
     } catch { /* unresolvable href */ }
   }
   if (!found.length) {
@@ -26,11 +33,6 @@ export function discoverFeedLinks(html: string, pageUrl: string): FeedLink[] {
     }
   }
   return found;
-}
-
-function attr(tag: string, name: string): string | undefined {
-  const match = tag.match(new RegExp(`${name}\\s*=\\s*"([^"]*)"`, 'i')) ?? tag.match(new RegExp(`${name}\\s*=\\s*'([^']*)'`, 'i'));
-  return match?.[1];
 }
 
 /** Loose feed-URL identity for duplicate checks: scheme, "www.", case and trailing slashes don't count. */
