@@ -42,7 +42,7 @@ export interface OpmlEntry { url: string; title?: string; folder?: string; }
 /** Feeds listed in an OPML file, with the label of the folder outline each sits in (if any). Duplicate URLs are listed once. */
 export function parseOpml(xml: string): OpmlEntry[] {
   const doc = new DOMParser().parseFromString(xml, 'text/xml');
-  if (doc.querySelector('parsererror')) throw new Error('That file is not valid OPML');
+  if (doc.querySelector('parsererror') || doc.documentElement.tagName.toLowerCase() !== 'opml' || ![...doc.documentElement.children].some(node => node.tagName.toLowerCase() === 'body')) throw new Error('That file is not valid OPML');
   const seen = new Set<string>();
   const entries: OpmlEntry[] = [];
   doc.querySelectorAll('outline').forEach(node => {

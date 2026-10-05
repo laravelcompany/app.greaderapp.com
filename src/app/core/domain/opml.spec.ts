@@ -80,3 +80,17 @@ describe('OPML folders', () => {
     expect(back.map(e => [e.url, e.folder])).toEqual([['https://x.test/1', 'News & Views'], ['https://x.test/2', undefined]]);
   });
 });
+
+
+describe('OPML document validation', () => {
+  it('rejects valid XML that is not an OPML document', async () => {
+    const { parseOpml } = await import('./opml');
+    expect(() => parseOpml('<rss><channel><title>Not an export</title></channel></rss>')).toThrow('not valid OPML');
+    expect(() => parseOpml('<document><outline xmlUrl="https://example.test/rss"/></document>')).toThrow('not valid OPML');
+  });
+  it('requires an OPML body but permits a genuinely empty export', async () => {
+    const { parseOpml } = await import('./opml');
+    expect(() => parseOpml('<opml><head><title>Missing body</title></head></opml>')).toThrow('not valid OPML');
+    expect(parseOpml('<opml version="2.0"><body/></opml>')).toEqual([]);
+  });
+});
