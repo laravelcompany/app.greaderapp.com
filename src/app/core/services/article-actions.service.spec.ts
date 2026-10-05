@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { ArticleActionsService } from './article-actions.service';
 import { Article, PendingMutation } from '../domain/models';
 
@@ -68,5 +69,27 @@ describe('ArticleActionsService', () => {
     const service = new ArticleActionsService(db);
     expect(await service.markAllRead('a', 'all', 'sub-tnw')).toBe(2);
     expect(calls[0].subscriptionId).toBe('sub-tnw');
+  });
+});
+
+
+describe('pending mutation identity', () => {
+  it('keeps every same-millisecond action instead of overwriting a queued mutation', async () => {
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(123456);
+    try {
+      const db = storage();
+      const persisted = new Map<string, PendingMutation>();
+      db.enqueue = async (mutation: PendingMutation) => { persisted.set(mutation.id, mutation); };
+      const service = new ArticleActionsService(db);
+      await service.setRead(article(), true);
+      await service.setRead(article(), false);
+      await service.setStarred(article(), true);
+      await service.setStarred(article(), false);
+      expect(persisted.size).toBe(4);
+      expect([...persisted.values()].map(x => [x.kind, x.value, x.createdAt])).toEqual([
+        ['read', true, 123456], ['read', false, 123456],
+        ['star', true, 123456], ['star', false, 123456],
+      ]);
+    } finally { clock.mockRestore(); }
   });
 });

@@ -28,7 +28,8 @@ export class ArticleActionsService {
 
   private enqueue(article: Article, kind: 'read' | 'star', value: boolean): Promise<void> {
     return this.db.enqueue({
-      id: `${article.id}:${kind}:${Date.now()}`, accountId: article.accountId, articleUid: article.uid,
+      // An acknowledgement of an older action must not erase a newer action sharing its millisecond.
+      id: `${article.id}:${kind}:${crypto.randomUUID()}`, accountId: article.accountId, articleUid: article.uid,
       kind, value, createdAt: Date.now(), attempts: 0,
     });
   }
