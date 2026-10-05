@@ -87,12 +87,44 @@ export function absolutizeUrls(html: string, baseUrl: string): string {
     const lazy = img.getAttribute('data-src') || img.getAttribute('data-lazy-src') || img.getAttribute('data-original');
     if (!img.getAttribute('src') && lazy) img.setAttribute('src', lazy);
     fix(img, 'src');
-    fix(img, 'srcset');
+    const lazySet = img.getAttribute('data-srcset') || img.getAttribute('data-lazy-srcset');
+    if (!img.getAttribute('srcset') && lazySet) img.setAttribute('srcset', lazySet);
     img.setAttribute('loading', 'lazy');
     img.setAttribute('decoding', 'async');
   });
+  doc.querySelectorAll('img, source').forEach(el => {
+    const value = el.getAttribute('srcset');
+    if (value) el.setAttribute('srcset', resolveSrcset(value, baseUrl));
+  });
+  doc.querySelectorAll('video').forEach(el => fix(el, 'poster'));
   doc.querySelectorAll('a').forEach(a => { a.setAttribute('target', '_blank'); a.setAttribute('rel', 'noopener'); });
   return doc.body.innerHTML;
+}
+
+/** Resolve each responsive-image candidate, preserving its width/density descriptor.
+ * URLs may contain commas (notably data URLs), so a comma split is not safe.
+ */
+function resolveSrcset(value: string, baseUrl: string): string {
+  const candidates: string[] = [];
+  let rest = value;
+  while (rest.length) {
+    rest = rest.replace(/^[\s,]+/, '');
+    if (!rest) break;
+    const token = rest.match(/^\S+/)?.[0] ?? '';
+    rest = rest.slice(token.length);
+    const trailingComma = token.endsWith(',');
+    const url = token.replace(/,+$/, '');
+    let descriptor = '';
+    if (!trailingComma) {
+      const comma = rest.indexOf(',');
+      descriptor = (comma < 0 ? rest : rest.slice(0, comma)).trim();
+      rest = comma < 0 ? '' : rest.slice(comma + 1);
+    }
+    let resolved = url;
+    try { resolved = new URL(url, baseUrl).toString(); } catch { /* keep original */ }
+    candidates.push(`${resolved}${descriptor ? ` ${descriptor}` : ''}`);
+  }
+  return candidates.join(', ');
 }
 
 /** The reading view prints the article title itself; drop an extracted h1/h2 near the top that repeats it. */

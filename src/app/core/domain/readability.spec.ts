@@ -88,3 +88,32 @@ describe('dropRepeatedTitle', () => {
     expect(dropRepeatedTitle('<p>x</p>', undefined)).toBe('<p>x</p>');
   });
 });
+
+
+describe('responsive article media', () => {
+  const base = 'https://example.com/blog/story';
+  it('resolves every srcset candidate without folding descriptors into the URL', () => {
+    const doc = new DOMParser().parseFromString(absolutizeUrls(
+      '<img srcset="small.jpg 480w, /large.jpg 960w, https://cdn.test/full.jpg 2x">', base), 'text/html');
+    expect(doc.querySelector('img')?.getAttribute('srcset')).toBe(
+      'https://example.com/blog/small.jpg 480w, https://example.com/large.jpg 960w, https://cdn.test/full.jpg 2x');
+  });
+  it('resolves picture sources, lazy responsive images and video posters', () => {
+    const doc = new DOMParser().parseFromString(absolutizeUrls(
+      '<picture><source srcset="/cover.webp 1x, /cover@2x.webp 2x"><img data-src="/cover.jpg" data-srcset="/cover.jpg 1x, /cover@2x.jpg 2x"></picture><video poster="../poster.jpg" src="clip.mp4"></video>', base), 'text/html');
+    expect(doc.querySelector('source')?.getAttribute('srcset')).toBe('https://example.com/cover.webp 1x, https://example.com/cover@2x.webp 2x');
+    expect(doc.querySelector('img')?.getAttribute('srcset')).toBe('https://example.com/cover.jpg 1x, https://example.com/cover@2x.jpg 2x');
+    expect(doc.querySelector('video')?.getAttribute('poster')).toBe('https://example.com/poster.jpg');
+  });
+  it('keeps embedded data URLs and handles candidates without descriptors', () => {
+    const doc = new DOMParser().parseFromString(absolutizeUrls(
+      '<img srcset="data:image/png;base64,AA 1x, /retina.png 2x"><source srcset="one.jpg, two.jpg">', base), 'text/html');
+    expect(doc.querySelector('img')?.getAttribute('srcset')).toBe('data:image/png;base64,AA 1x, https://example.com/retina.png 2x');
+    expect(doc.querySelector('source')?.getAttribute('srcset')).toBe('https://example.com/blog/one.jpg, https://example.com/blog/two.jpg');
+  });
+  it('does not replace a publishers existing srcset with a lazy fallback', () => {
+    const doc = new DOMParser().parseFromString(absolutizeUrls(
+      '<img srcset="/original.jpg 1x" data-srcset="/fallback.jpg 1x">', base), 'text/html');
+    expect(doc.querySelector('img')?.getAttribute('srcset')).toBe('https://example.com/original.jpg 1x');
+  });
+});
