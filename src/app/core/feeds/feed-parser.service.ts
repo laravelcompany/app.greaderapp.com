@@ -58,7 +58,9 @@ export class FeedParserService {
         const attachments = this.array<any>(item.attachments);
         const audio = attachments.find(value => String(value?.mime_type ?? '').startsWith('audio/'))?.url;
         const video = attachments.find(value => String(value?.mime_type ?? '').startsWith('video/'))?.url;
-        const content = this.text(item.content_html ?? item.content_text ?? item.summary);
+        const content = item.content_html != null
+          ? this.text(item.content_html)
+          : this.plainTextHtml(this.text(item.content_text ?? item.summary));
         const link = this.text(item.url ?? item.external_url);
         return {
           uid: this.text(item.id) || link || `${this.text(item.title)}:${this.text(item.date_published)}`,
@@ -69,6 +71,11 @@ export class FeedParserService {
         };
       }),
     };
+  }
+
+  /** JSON Feed content_text is text, not markup. Preserve literal tags and line breaks. */
+  private plainTextHtml(value: string): string {
+    return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\r\n?|\n/g, '<br>');
   }
 
   private item(item: any): ParsedFeedItem {

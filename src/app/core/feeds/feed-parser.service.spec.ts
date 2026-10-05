@@ -49,3 +49,18 @@ describe('FeedParserService', () => {
     expect(feed.items[0].publishedAt).toBeLessThanOrEqual(Date.now());
   });
 });
+
+
+describe('JSON Feed plain-text content', () => {
+  const parser = new FeedParserService();
+  it('escapes literal markup and preserves line breaks in content_text', () => {
+    const feed = parser.parse(JSON.stringify({ version: 'https://jsonfeed.org/version/1.1', items: [{ id: 'text', content_text: 'Use <button> & <script> as examples.\nNext line.' }] }));
+    expect(feed.items[0].content).toBe('Use &lt;button&gt; &amp; &lt;script&gt; as examples.<br>Next line.');
+    expect(feed.items[0].image).toBeUndefined();
+  });
+  it('keeps real content_html as markup and escapes a plain-text summary fallback', () => {
+    const feed = parser.parse(JSON.stringify({ version: 'https://jsonfeed.org/version/1', items: [{ id: 'html', content_html: '<p>Markup</p>', content_text: 'Fallback' }, { id: 'summary', summary: 'A < B & C' }] }));
+    expect(feed.items[0].content).toBe('<p>Markup</p>');
+    expect(feed.items[1].content).toBe('A &lt; B &amp; C');
+  });
+});
