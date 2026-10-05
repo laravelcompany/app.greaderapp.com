@@ -45,6 +45,11 @@ export function applyFeedPrefs(subscription: Subscription, changes: Partial<Pick
   for (const [key, value] of Object.entries(changes)) {
     if (!allowed.has(key)) throw new Error(`Unknown feed preference: ${key}`);
     if (value === undefined) continue;
+    const toggle = FEED_TOGGLES.some(option => option.key === key);
+    const choice = FEED_CHOICES.find(option => option.key === key);
+    if ((toggle && typeof value !== 'boolean') || (choice && !choice.options.some(option => option.value === value))) {
+      throw new Error(`Invalid value for feed preference: ${key}`);
+    }
     (next as Record<string, unknown>)[key] = value;
   }
   return next;

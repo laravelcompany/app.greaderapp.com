@@ -39,3 +39,19 @@ describe('applyFeedPrefs', () => {
     expect(OFFLINE_CONTENT_OPTIONS.map(x => x.value)).toEqual([-1, 0, 1, 2, 3, 4]);
   });
 });
+
+
+describe('feed preference value validation', () => {
+  it('rejects wrong toggle types rather than persisting truthy strings', () => {
+    for (const value of ['false', 1, null]) {
+      expect(() => applyFeedPrefs(sub(), { hidden: value } as any)).toThrow('Invalid value');
+    }
+  });
+  it('rejects unsupported choice values and leaves the original subscription unchanged', () => {
+    const original = sub();
+    for (const value of [99, '2', null, NaN]) {
+      expect(() => applyFeedPrefs(original, { offlineContent: value } as any)).toThrow('Invalid value');
+    }
+    expect(original.offlineContent).toBe(-1);
+  });
+});
