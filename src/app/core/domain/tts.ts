@@ -1,3 +1,5 @@
+import { htmlToText } from './text-preview';
+
 export interface TtsPrefs { voiceUri: string | null; rate: number; pitch: number; }
 
 export const DEFAULT_TTS_PREFS: TtsPrefs = { voiceUri: null, rate: 1, pitch: 1 };
@@ -23,10 +25,8 @@ export function sanitizeTtsPrefs(raw: string | null | undefined): TtsPrefs {
 
 /** Spoken form of an article: title, then visible body text with markup removed and whitespace collapsed. */
 export function speechText(title: string, contentHtml: string | undefined): string {
-  const body = contentHtml
-    ? new DOMParser().parseFromString(contentHtml, 'text/html').body.textContent ?? ''
-    : '';
-  const text = `${title}. ${body}`.replace(/\s+/g, ' ').trim();
+  const body = htmlToText(contentHtml);
+  const text = `${htmlToText(title)}. ${body}`.replace(/\s+/g, ' ').trim();
   return text.length > MAX_UTTERANCE_CHARS ? `${text.slice(0, MAX_UTTERANCE_CHARS)}…` : text;
 }
 

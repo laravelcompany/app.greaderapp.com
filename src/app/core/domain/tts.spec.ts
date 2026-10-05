@@ -40,3 +40,13 @@ describe('track navigation', () => {
     expect(previousTrack(0, 0)).toBe(-1);
   });
 });
+
+
+describe('speech text cleanup', () => {
+  it('keeps paragraph boundaries and excludes script/style text from speech', () => {
+    expect(speechText('Story', '<p>First paragraph.</p><p>Second paragraph.</p><script>tracking()</script><style>.ad{display:none}</style>')).toBe('Story. First paragraph. Second paragraph.');
+  });
+  it('decodes title markup and entities instead of reading them literally', () => {
+    expect(speechText('<b>News &amp; Views</b>', '<p>A &amp; B</p>')).toBe('News & Views. A & B');
+  });
+});
