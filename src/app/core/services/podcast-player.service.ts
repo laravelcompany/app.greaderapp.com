@@ -44,11 +44,11 @@ export class PodcastPlayerService {
     const audio = this.createAudio(track.url);
     audio.preload = 'auto';
     audio.playbackRate = this.rate();
-    audio.addEventListener('timeupdate', () => { this.position.set(audio.currentTime); });
-    audio.addEventListener('durationchange', () => this.duration.set(audio.duration));
-    audio.addEventListener('loadedmetadata', () => this.duration.set(audio.duration));
-    audio.addEventListener('ended', () => void this.next());
-    audio.addEventListener('error', () => void this.next());
+    audio.addEventListener('timeupdate', () => { if (this.audio === audio) this.position.set(audio.currentTime); });
+    audio.addEventListener('durationchange', () => { if (this.audio === audio) this.duration.set(audio.duration); });
+    audio.addEventListener('loadedmetadata', () => { if (this.audio === audio) this.duration.set(audio.duration); });
+    audio.addEventListener('ended', () => { if (this.audio === audio) void this.next(); });
+    audio.addEventListener('error', () => { if (this.audio === audio) void this.next(); });
     this.audio = audio;
     this.currentIndex.set(index);
     this.position.set(0);
@@ -106,9 +106,10 @@ export class PodcastPlayerService {
 
   private teardown(): void {
     if (!this.audio) return;
-    this.audio.pause();
-    this.audio.src = '';
+    const audio = this.audio;
     this.audio = undefined;
+    audio.pause();
+    audio.src = '';
     this.playing.set(false);
   }
 

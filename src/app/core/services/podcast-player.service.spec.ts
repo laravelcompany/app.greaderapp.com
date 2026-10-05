@@ -35,3 +35,43 @@ describe('podcast resume persistence', () => {
     expect(service.playing()).toBe(false);
   });
 });
+
+
+describe('podcast stale media events', () => {
+  it('ignores events from a replaced or stopped audio element', async () => {
+    const { service } = player();
+    const audios: { audio: HTMLAudioElement; emit: (event: string) => void }[] = [];
+    service.createAudio = () => {
+      const listeners = new Map<string, () => void>();
+      const audio = {
+        preload: '', playbackRate: 1, currentTime: 0, duration: 300, paused: false, src: '',
+        addEventListener: (event: string, callback: () => void) => { listeners.set(event, callback); },
+        play: async () => undefined, pause: () => undefined,
+      } as unknown as HTMLAudioElement;
+      audios.push({ audio, emit: event => listeners.get(event)?.() });
+      return audio;
+    };
+    await service.play(0);
+    const old = audios[0];
+    await service.play(1);
+    old.audio.currentTime = 88;
+    Object.defineProperty(old.audio, 'duration', { value: 999 });
+    for (const event of ['timeupdate', 'durationchange', 'loadedmetadata', 'error', 'ended']) old.emit(event);
+    await Promise.resolve();
+    expect(service.currentIndex()).toBe(1);
+    expect(service.position()).toBe(0);
+    expect(service.duration()).toBeNaN();
+    expect(service.playing()).toBe(true);
+    const active = audios[1];
+    active.audio.currentTime = 42;
+    active.emit('timeupdate');
+    active.emit('loadedmetadata');
+    expect(service.position()).toBe(42);
+    expect(service.duration()).toBe(300);
+    service.stop();
+    active.emit('timeupdate');
+    active.emit('loadedmetadata');
+    expect(service.position()).toBe(0);
+    expect(service.duration()).toBeNaN();
+  });
+});
