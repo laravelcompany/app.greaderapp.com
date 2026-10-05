@@ -11,6 +11,14 @@ export function discoverFeedLinks(html: string, pageUrl: string): FeedLink[] {
   const found: FeedLink[] = [];
   const doc = new DOMParser().parseFromString(html, 'text/html');
   const seen = new Set<string>();
+  let baseUrl = pageUrl;
+  const baseHref = doc.querySelector('base[href]')?.getAttribute('href');
+  if (baseHref != null) {
+    try {
+      const base = new URL(baseHref, pageUrl);
+      if (['http:', 'https:'].includes(base.protocol)) baseUrl = base.href;
+    } catch { /* invalid document base: retain final page URL */ }
+  }
   // Read only advertised feed metadata. DOM parsing decodes entities and
   // supports unquoted attributes without fetching or executing page content.
   for (const link of doc.querySelectorAll('link')) {
@@ -21,7 +29,7 @@ export function discoverFeedLinks(html: string, pageUrl: string): FeedLink[] {
     const href = link.getAttribute('href')?.trim();
     if (!href) continue;
     try {
-      const url = new URL(href, pageUrl);
+      const url = new URL(href, baseUrl);
       if (!['http:', 'https:'].includes(url.protocol) || seen.has(url.href)) continue;
       seen.add(url.href);
       found.push({ url: url.href, title: link.getAttribute('title') ?? undefined });

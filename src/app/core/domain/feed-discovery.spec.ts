@@ -75,3 +75,20 @@ describe('case-sensitive feed URL identity', () => {
     expect(feedUrlKey('https://WWW.Example.test/News/')).toBe(feedUrlKey('http://example.test/News'));
   });
 });
+
+
+describe('feed discovery document base', () => {
+  it('resolves relative feed metadata against an absolute HTML base URL', () => {
+    const html = '<base href="https://cdn.example.test/blog/"><link rel="alternate" type="application/rss+xml" href="feed.xml">';
+    expect(discoverFeedLinks(html, 'https://example.test/post')).toEqual([{ url: 'https://cdn.example.test/blog/feed.xml', title: undefined }]);
+  });
+  it('resolves a relative base URL against the final page URL', () => {
+    const html = '<base href="../news/"><link rel="alternate" type="application/atom+xml" href="atom.xml">';
+    expect(discoverFeedLinks(html, 'https://example.test/blog/post')).toEqual([{ url: 'https://example.test/news/atom.xml', title: undefined }]);
+  });
+  it('ignores unsafe base schemes and keeps common fallback paths on the page origin', () => {
+    const link = '<link rel="alternate" type="application/rss+xml" href="feed.xml">';
+    expect(discoverFeedLinks('<base href="javascript:alert(1)">' + link, 'https://example.test/blog/')[0].url).toBe('https://example.test/blog/feed.xml');
+    expect(discoverFeedLinks('<base href="https://cdn.example.test/">', 'https://example.test/blog/')[0].url).toBe('https://example.test/feed');
+  });
+});
