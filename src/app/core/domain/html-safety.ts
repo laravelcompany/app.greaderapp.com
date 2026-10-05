@@ -3,7 +3,7 @@ import { absolutizeUrls } from './readability';
 /** Elements that can run code, submit data or pull in foreign documents. YouTube embeds are rebuilt separately from the media list. */
 const DANGEROUS =
   'script, style, link, meta, base, iframe, frame, frameset, object, embed, applet, form, input, button, select, textarea, template, noscript';
-const URL_ATTRS = ['href', 'src', 'srcset', 'action', 'formaction', 'poster', 'xlink:href', 'background'];
+const URL_ATTRS = ['href', 'src', 'srcset', 'action', 'formaction', 'poster', 'xlink:href', 'background', 'data-src', 'data-lazy-src', 'data-original', 'data-srcset', 'data-lazy-srcset'];
 
 function unsafeUrl(value: string): boolean {
   const v = value.replace(/[\u0000-\u0020]/g, '').toLowerCase();

@@ -55,3 +55,19 @@ describe('shouldAutoloadReading', () => {
     expect(shouldAutoloadReading(false, -1, false, 0)).toBe(false);
   });
 });
+
+
+describe('lazy media safety before URL promotion', () => {
+  it('removes unsafe lazy image URLs before they become src attributes', () => {
+    const out = sanitizeArticleHtml('<img data-src="javascript:alert(1)"><img data-original="data:text/html,unsafe"><img data-lazy-src="vbscript:bad">', 'https://example.test/article');
+    expect(out).not.toMatch(/javascript:|vbscript:|data:text/i);
+    const doc = new DOMParser().parseFromString(out, 'text/html');
+    expect([...doc.images].every(img => !img.getAttribute('src'))).toBe(true);
+  });
+  it('removes unsafe lazy responsive sources and still promotes safe lazy images', () => {
+    const out = sanitizeArticleHtml('<img data-srcset="javascript:alert(1) 1x"><img data-lazy-srcset="data:text/html,bad 1x"><img data-src="/safe.jpg" data-srcset="/safe.jpg 1x, /safe@2x.jpg 2x">', 'https://example.test/article');
+    expect(out).not.toMatch(/javascript:|data:text/i);
+    expect(out).toContain('src="https://example.test/safe.jpg"');
+    expect(out).toContain('srcset="https://example.test/safe.jpg 1x, https://example.test/safe@2x.jpg 2x"');
+  });
+});
