@@ -1,50 +1,50 @@
-import { vi } from 'vitest';
+import { ListPreferencesService } from './list-preferences.service';
 
 const store = new Map<string, string>();
-vi.mock('@capacitor/preferences', () => ({
-  Preferences: {
+function service() {
+  const value = new ListPreferencesService();
+  value.preferences = {
     get: async ({ key }: { key: string }) => ({ value: store.get(key) ?? null }),
     set: async ({ key, value }: { key: string; value: string }) => { store.set(key, value); },
-  },
-}));
-
-import { ListPreferencesService } from './list-preferences.service';
+  } as typeof value.preferences;
+  return value;
+}
 
 describe('ListPreferencesService', () => {
   beforeEach(() => store.clear());
 
   it('defaults to list mode and custom feed order', async () => {
-    const service = new ListPreferencesService();
-    await service.init();
-    expect(service.listMode()).toBe('list');
-    expect(service.feedSort()).toBe('custom');
+    const prefs = service();
+    await prefs.init();
+    expect(prefs.listMode()).toBe('list');
+    expect(prefs.feedSort()).toBe('custom');
   });
 
   it('restores persisted preferences', async () => {
     store.set('articleListMode', 'grid');
     store.set('feedSortMode', 'unread');
-    const service = new ListPreferencesService();
-    await service.init();
-    expect(service.listMode()).toBe('grid');
-    expect(service.feedSort()).toBe('unread');
+    const prefs = service();
+    await prefs.init();
+    expect(prefs.listMode()).toBe('grid');
+    expect(prefs.feedSort()).toBe('unread');
   });
 
   it('ignores values outside the known options', async () => {
     store.set('articleListMode', 'mosaic');
     store.set('feedSortMode', 'random');
-    const service = new ListPreferencesService();
-    await service.init();
-    expect(service.listMode()).toBe('list');
-    expect(service.feedSort()).toBe('custom');
+    const prefs = service();
+    await prefs.init();
+    expect(prefs.listMode()).toBe('list');
+    expect(prefs.feedSort()).toBe('custom');
   });
 
   it('persists changes immediately', async () => {
-    const service = new ListPreferencesService();
-    await service.setListMode('card');
-    await service.setFeedSort('alphabetical');
+    const prefs = service();
+    await prefs.setListMode('card');
+    await prefs.setFeedSort('alphabetical');
     expect(store.get('articleListMode')).toBe('card');
     expect(store.get('feedSortMode')).toBe('alphabetical');
-    const restored = new ListPreferencesService();
+    const restored = service();
     await restored.init();
     expect(restored.listMode()).toBe('card');
     expect(restored.feedSort()).toBe('alphabetical');

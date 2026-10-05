@@ -92,7 +92,7 @@ export class ArticlePage implements OnInit {
       const a = await this.db.getArticle(id);
       this.article.set(a);
       if (a) this.accountTags.set(await this.db.listTags(a.accountId));
-      if (a && !a.read) await this.db.updateArticle(id, { read: true, readAt: Date.now() });
+      if (a && !a.read && !a.keepUnread) await this.db.updateArticle(id, { read: true, readAt: Date.now() });
       if (a?.link && await this.autoloadReading(a)) await this.setMode('simplified');
     }
   }
@@ -132,7 +132,7 @@ export class ArticlePage implements OnInit {
     try {
       const response = await this.http.get(a.link);
       if (response.status < 200 || response.status >= 300) throw new Error(`Source page request failed (${response.status})`);
-      this.extracted.set(absolutizeUrls(dropRepeatedTitle(extractMainContent(response.body), a.title), a.link));
+      this.extracted.set(absolutizeUrls(dropRepeatedTitle(extractMainContent(response.body), a.title), response.finalUrl || a.link));
     } catch (error) {
       this.extractError.set(error instanceof Error ? `Could not extract the article: ${error.message}` : 'Could not extract the article.');
     } finally {
