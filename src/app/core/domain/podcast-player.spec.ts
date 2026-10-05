@@ -42,3 +42,13 @@ describe('clampSeek', () => {
     expect(clampSeek(-1, NaN)).toBe(0);
   });
 });
+
+
+describe('invalid seek positions', () => {
+  it('returns a safe finite position for NaN and infinities', () => {
+    for (const position of [NaN, Infinity, -Infinity]) {
+      expect(clampSeek(position, 100)).toBe(0);
+      expect(clampSeek(position, NaN)).toBe(0);
+    }
+  });
+});

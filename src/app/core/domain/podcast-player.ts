@@ -26,6 +26,7 @@ export function audioTracks(articles: { id: string; title: string; author?: stri
 
 /** Seek target clamped into [0, duration]; duration may be unknown (NaN) while metadata loads. */
 export function clampSeek(position: number, duration: number): number {
+  if (!Number.isFinite(position)) return 0;
   if (!Number.isFinite(duration) || duration <= 0) return Math.max(0, position);
   return Math.min(Math.max(0, position), duration);
 }
