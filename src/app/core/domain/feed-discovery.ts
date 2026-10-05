@@ -35,8 +35,15 @@ export function discoverFeedLinks(html: string, pageUrl: string): FeedLink[] {
   return found;
 }
 
-/** Loose feed-URL identity for duplicate checks: scheme, "www.", case and trailing slashes don't count. */
+/** Loose feed identity: scheme/www/trailing slashes may differ, but paths and queries are case-sensitive. */
 export function feedUrlKey(value: string | undefined): string {
   if (!value) return '';
-  return value.trim().toLowerCase().replace(/^[a-z]+:\/\//, '').replace(/^www\./, '').replace(/\/+$/, '');
+  const trimmed = value.trim();
+  try {
+    const url = new URL(/^[a-z]+:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`);
+    const host = url.host.toLowerCase().replace(/^www\./, '');
+    return `${host}${url.pathname.replace(/\/+$/, '')}${url.search}${url.hash}`;
+  } catch {
+    return trimmed.replace(/^[a-z]+:\/\//i, '').replace(/^www\./i, '').replace(/\/+$/, '');
+  }
 }

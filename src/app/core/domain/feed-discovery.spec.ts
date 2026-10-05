@@ -31,7 +31,7 @@ describe('feed discovery', () => {
 });
 
 describe('feedUrlKey', () => {
-  it('treats http/https, www, case and trailing slash as the same feed', async () => {
+  it('treats http/https, www, host case and trailing slash as the same feed', async () => {
     const { feedUrlKey } = await import('./feed-discovery');
     expect(feedUrlKey('http://www.Example.com/feed/')).toBe(feedUrlKey('https://example.com/feed'));
     expect(feedUrlKey('https://example.com/feed')).not.toBe(feedUrlKey('https://example.com/rss'));
@@ -63,5 +63,15 @@ describe('website feed metadata', () => {
   it('deduplicates advertised URLs without confusing data attributes with href', () => {
     const links = discoverFeedLinks('<link rel="alternate" type="application/rss+xml" data-href="/wrong" href="/rss"><link rel="alternate" type="application/atom+xml" href="https://example.com/rss">', 'https://example.com/');
     expect(links).toEqual([{ url: 'https://example.com/rss', title: undefined }]);
+  });
+});
+
+
+describe('case-sensitive feed URL identity', () => {
+  it('does not merge distinct paths or query tokens while normalizing hostname case', async () => {
+    const { feedUrlKey } = await import('./feed-discovery');
+    expect(feedUrlKey('https://example.test/News')).not.toBe(feedUrlKey('https://example.test/news'));
+    expect(feedUrlKey('https://example.test/rss?token=AbC')).not.toBe(feedUrlKey('https://example.test/rss?token=abc'));
+    expect(feedUrlKey('https://WWW.Example.test/News/')).toBe(feedUrlKey('http://example.test/News'));
   });
 });
