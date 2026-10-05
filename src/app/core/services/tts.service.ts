@@ -15,6 +15,8 @@ export class TtsService {
   readonly prefs = signal<TtsPrefs>({ ...DEFAULT_TTS_PREFS });
   readonly voices = signal<SpeechSynthesisVoice[]>([]);
 
+  private playbackGeneration = 0;
+
   private get synth(): SpeechSynthesis | undefined {
     return 'speechSynthesis' in window ? window.speechSynthesis : undefined;
   }
@@ -44,6 +46,7 @@ export class TtsService {
     const synth = this.synth;
     const article = this.queue()[index];
     if (!synth || !article) return;
+    const generation = ++this.playbackGeneration;
     synth.cancel();
     const utterance = new SpeechSynthesisUtterance(speechText(article.title, article.content));
     const prefs = this.prefs();
@@ -51,8 +54,10 @@ export class TtsService {
     if (voice) utterance.voice = voice;
     utterance.rate = prefs.rate;
     utterance.pitch = prefs.pitch;
-    utterance.onend = () => this.advance();
-    utterance.onerror = () => this.advance();
+    // Cancellation can report an error after the next utterance has already started.
+    const advance = () => { if (generation === this.playbackGeneration) this.advance(); };
+    utterance.onend = advance;
+    utterance.onerror = advance;
     this.currentIndex.set(index);
     this.playing.set(true);
     this.paused.set(false);
@@ -78,6 +83,7 @@ export class TtsService {
   }
 
   stop(): void {
+    ++this.playbackGeneration;
     this.synth?.cancel();
     this.playing.set(false);
     this.paused.set(false);

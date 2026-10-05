@@ -98,6 +98,35 @@ describe('TtsService', () => {
     expect(service.currentIndex()).toBe(0);
   });
 
+  it('ignores delayed callbacks from an utterance replaced by a manual skip', async () => {
+    const service = new TtsService();
+    await service.init();
+    service.setQueue([article('a'), article('b'), article('c')]);
+    service.play(0);
+    const old = FakeUtterance.last!;
+    service.next();
+    old.onerror?.();
+    old.onend?.();
+    expect(service.currentIndex()).toBe(1);
+    expect(synth.spoken.length).toBe(2);
+    FakeUtterance.last?.onend?.();
+    expect(service.currentIndex()).toBe(2);
+  });
+
+  it('ignores a cancelled utterance callback after a new queue starts', async () => {
+    const service = new TtsService();
+    await service.init();
+    service.setQueue([article('a')]);
+    service.play(0);
+    const old = FakeUtterance.last!;
+    service.setQueue([article('b'), article('c')]);
+    service.play(0);
+    old.onerror?.();
+    expect(service.currentIndex()).toBe(0);
+    expect(service.playing()).toBe(true);
+    expect(synth.spoken.length).toBe(2);
+  });
+
   it('removing the current item stops playback; earlier items shift the index', async () => {
     const service = new TtsService();
     await service.init();
