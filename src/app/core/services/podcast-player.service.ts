@@ -8,6 +8,8 @@ const POSITION_KEY_PREFIX = 'podcastPos:';
 /** Background audio player for podcast enclosures: queue, transport, persisted rate and resume positions, media-session controls. */
 @Injectable({ providedIn: 'root' })
 export class PodcastPlayerService {
+  preferences = Preferences;
+  createAudio = (url: string): HTMLAudioElement => new Audio(url);
   readonly queue = signal<PodcastTrack[]>([]);
   readonly currentIndex = signal(-1);
   readonly playing = signal(false);
@@ -22,7 +24,7 @@ export class PodcastPlayerService {
   }
 
   async init(): Promise<void> {
-    const { value } = await Preferences.get({ key: RATE_KEY });
+    const { value } = await this.preferences.get({ key: RATE_KEY });
     this.rate.set(clampRate(value === null ? 1 : Number(value)));
   }
 
@@ -37,8 +39,9 @@ export class PodcastPlayerService {
   async play(index: number): Promise<void> {
     const track = this.queue()[index];
     if (!track) return;
+    await this.persistPosition();
     this.teardown();
-    const audio = new Audio(track.url);
+    const audio = this.createAudio(track.url);
     audio.preload = 'auto';
     audio.playbackRate = this.rate();
     audio.addEventListener('timeupdate', () => { this.position.set(audio.currentTime); });
@@ -60,7 +63,7 @@ export class PodcastPlayerService {
     const audio = this.audio;
     if (!audio) { if (this.queue().length) void this.play(0); return; }
     if (audio.paused) { void audio.play(); this.playing.set(true); }
-    else { audio.pause(); this.playing.set(false); }
+    else { audio.pause(); this.playing.set(false); void this.persistPosition(); }
   }
 
   async next(): Promise<void> {
@@ -88,7 +91,7 @@ export class PodcastPlayerService {
     const clamped = clampRate(rate);
     this.rate.set(clamped);
     if (this.audio) this.audio.playbackRate = clamped;
-    await Preferences.set({ key: RATE_KEY, value: String(clamped) });
+    await this.preferences.set({ key: RATE_KEY, value: String(clamped) });
   }
 
   stop(): void {
@@ -111,7 +114,7 @@ export class PodcastPlayerService {
 
   /** Resume positions survive app restarts, keyed per track. */
   private async restorePosition(track: PodcastTrack): Promise<void> {
-    const { value } = await Preferences.get({ key: `${POSITION_KEY_PREFIX}${track.id}` });
+    const { value } = await this.preferences.get({ key: `${POSITION_KEY_PREFIX}${track.id}` });
     const saved = value === null ? 0 : Number(value);
     if (this.audio && Number.isFinite(saved) && saved > 5) {
       this.audio.currentTime = saved;
@@ -122,7 +125,7 @@ export class PodcastPlayerService {
   private async persistPosition(): Promise<void> {
     const track = this.current();
     if (!track) return;
-    await Preferences.set({ key: `${POSITION_KEY_PREFIX}${track.id}`, value: String(Math.floor(this.position())) });
+    await this.preferences.set({ key: `${POSITION_KEY_PREFIX}${track.id}`, value: String(Math.floor(this.position())) });
   }
 
   private updateMediaSession(track: PodcastTrack): void {
