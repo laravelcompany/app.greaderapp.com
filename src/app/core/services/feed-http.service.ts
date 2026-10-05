@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { Capacitor, CapacitorHttp } from '@capacitor/core';
 import { environment } from '../../../environments/environment';
 
-export interface FeedHttpResponse { status: number; body: string; }
+export interface FeedHttpResponse { status: number; body: string; finalUrl?: string; }
 
 @Injectable({ providedIn: 'root' })
 export class FeedHttpService {
@@ -20,7 +20,7 @@ export class FeedHttpService {
     };
     if (this.native.isNative()) {
       const response = await this.native.get({ url, headers, responseType: 'text', connectTimeout: 15_000, readTimeout: 30_000 });
-      return { status: response.status, body: typeof response.data === 'string' ? response.data : JSON.stringify(response.data) };
+      return { status: response.status, finalUrl: response.url || url, body: typeof response.data === 'string' ? response.data : JSON.stringify(response.data) };
     }
     const endpoint = new URL(environment.feedProxyUrl, window.location.origin);
     endpoint.searchParams.set('url', url);
@@ -29,6 +29,6 @@ export class FeedHttpService {
       const detail = await response.json().catch(() => ({})) as { error?: string };
       throw new Error(detail.error || `Feed proxy failed (${response.status})`);
     }
-    return { status: response.status, body: await response.text() };
+    return { status: response.status, body: await response.text(), finalUrl: response.headers.get('X-Feed-Final-Url') || url };
   }
 }

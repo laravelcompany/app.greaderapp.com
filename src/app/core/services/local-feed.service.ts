@@ -16,19 +16,23 @@ export class LocalFeedService {
     const normalized = this.normalizeUrl(url);
     const response = await this.http.get(normalized);
     if (response.status < 200 || response.status >= 300) throw new Error(`Feed request failed (${response.status})`);
-    try { return await this.importXml(accountId, response.body, normalized); }
-    catch { /* not a feed document: try website feed discovery */ }
-    return this.subscribeViaDiscovery(accountId, normalized, response.body);
+    try { this.parser.parse(response.body); }
+    catch { return this.subscribeViaDiscovery(accountId, response.finalUrl || normalized, response.body); }
+    // Storage failures are not format errors. Surface them instead of fetching unrelated candidates.
+    return this.importXml(accountId, response.body, normalized);
   }
 
   /** The URL points at a web page: follow its advertised feed links, then common feed paths. */
   private async subscribeViaDiscovery(accountId: string, pageUrl: string, html: string): Promise<Subscription> {
     for (const link of discoverFeedLinks(html, pageUrl)) {
+      let body: string;
       try {
         const feed = await this.http.get(link.url);
         if (feed.status < 200 || feed.status >= 300) continue;
-        return await this.importXml(accountId, feed.body, link.url);
-      } catch { /* candidate was not a feed; keep looking */ }
+        this.parser.parse(feed.body);
+        body = feed.body;
+      } catch { continue; /* candidate was unavailable or not a feed */ }
+      return this.importXml(accountId, body, link.url);
     }
     throw new Error('No feed found on that page. Paste the direct feed URL instead.');
   }
