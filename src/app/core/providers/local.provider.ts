@@ -20,10 +20,12 @@ import { FeedHttpService } from '../services/feed-http.service';
   async sync(account:Account):Promise<SyncSnapshot>{
     const subscriptions=(await this.storage.listSubscriptions(account.id)).filter(s=>s.feedUrl&&!s.syncExcluded);
     const candidates=new Map<string,Article>();
-    await Promise.all(subscriptions.map(async sub=>{
+    const queue = [...subscriptions];
+    const worker = async () => {
+      for (let sub = queue.shift(); sub; sub = queue.shift()) {
       try{
         const response=await this.http.get(sub.feedUrl!);
-        if(response.status<200||response.status>=300)return;
+        if(response.status<200||response.status>=300)continue;
         const parsed=this.parser.parse(response.body);
         for(const item of parsed.items){
           const id=stableId(account.id,item.uid);
@@ -31,7 +33,9 @@ import { FeedHttpService } from '../services/feed-http.service';
           candidates.set(id,{id,accountId:account.id,subscriptionId:sub.id,uid:item.uid,title:item.title,content:item.content,author:item.author,link:item.link,image:item.image,audio:item.audio,video:item.video,publishedAt:item.publishedAt,updatedAt:item.publishedAt,starred:false,cached:true,read:false,keepUnread:false});
         }
       }catch{/* feed unreachable this cycle; try again on the next one */}
-    }));
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(4, subscriptions.length) }, worker));
     const stored=await this.storage.existingArticleIds([...candidates.keys()]);
     const articles=[...candidates.values()].filter(a=>!stored.has(a.id));
     return{subscriptions:[],tags:[],articles};
