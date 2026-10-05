@@ -49,5 +49,5 @@ export function allowedContentType(value = '') {
   // text/html is allowed so a pasted website URL can be scanned for its feed
   // links (the native HTTP path imposes no content-type gate at all); the SSRF
   // policy and size cap still bound what comes back.
-  return /(^|\/|\+)(xml|rss|atom|html)($|;)|^text\/(plain|html)(?:;|$)|^application\/octet-stream(?:;|$)/i.test(value);
+  return /^application\/(?:feed\+json|json)(?:;|$)/i.test(value) || /(^|\/|\+)(xml|rss|atom|html)($|;)|^text\/(plain|html)(?:;|$)|^application\/octet-stream(?:;|$)/i.test(value);
 }

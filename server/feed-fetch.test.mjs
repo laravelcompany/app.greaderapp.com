@@ -29,3 +29,15 @@ describe('feed fetch', () => {
     expect(request).toHaveBeenCalledTimes(3);
   });
 });
+
+it('passes JSON Feed bytes through the proxy for the client parser', async () => {
+  const body = JSON.stringify({ version: 'https://jsonfeed.org/version/1.1', title: 'JSON Feed', items: [] });
+  const feed = await fetchFeed('https://example.test/feed.json', {
+    resolve: async () => ({ address: '93.184.216.34', family: 4 }),
+    dispatcher: () => ({}),
+    fetch: async () => new Response(body, { headers: { 'content-type': 'application/feed+json; charset=utf-8' } }),
+  });
+  expect(feed.body.toString('utf8')).toBe(body);
+  expect(feed.contentType).toBe('application/feed+json; charset=utf-8');
+  expect(feed.finalUrl).toBe('https://example.test/feed.json');
+});
