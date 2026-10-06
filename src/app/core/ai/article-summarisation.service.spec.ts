@@ -104,6 +104,14 @@ describe('ArticleSummarisationService', () => {
     expect(llm.calls.length).toBe(2);
   });
 
+  it('invalidates the summary when the article title changes', async () => {
+    await service.summarise(input);
+    const corrected = { ...input, title: 'Corrected budget plan' };
+    expect(await service.cached(corrected)).toBeUndefined();
+    expect((await service.summarise(corrected)).fromCache).toBe(false);
+    expect(llm.calls.length).toBe(2);
+  });
+
   it('keeps summaries of different articles independent', async () => {
     await service.summarise(input);
     const other = await service.summarise({ ...input, articleId: 'a2' });

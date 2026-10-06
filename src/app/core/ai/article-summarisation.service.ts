@@ -56,7 +56,7 @@ export class ArticleSummarisationService {
   async cached(input: SummaryInput): Promise<SummaryResult | undefined> {
     const text = articleTextForSummary(input.html);
     if (!text) return undefined;
-    const hit = await this.cache.get(input.articleId, contentHash(text), this.llm.model.id);
+    const hit = await this.cache.get(input.articleId, contentHash(JSON.stringify([input.title ?? '', text])), this.llm.model.id);
     return hit ? { summary: hit.summary, fromCache: true, model: hit.model, createdAt: hit.createdAt } : undefined;
   }
 
@@ -67,7 +67,7 @@ export class ArticleSummarisationService {
     const plan = planSummary(text);
     if (plan.kind === 'insufficient') throw new SummaryError('insufficient');
     if (plan.kind === 'too-large') throw new SummaryError('too-large');
-    const hash = contentHash(text);
+    const hash = contentHash(JSON.stringify([input.title ?? '', text]));
     const model = this.llm.model.id;
     if (!opts.force) {
       const hit = await this.cache.get(input.articleId, hash, model);
