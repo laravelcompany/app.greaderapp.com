@@ -108,8 +108,8 @@ export class TtsService {
     if (!('mediaSession' in navigator)) return;
     try {
       navigator.mediaSession.metadata = new MediaMetadata({ title: article.title, artist: article.author ?? 'gReader News' });
-      navigator.mediaSession.setActionHandler('play', () => this.togglePause());
-      navigator.mediaSession.setActionHandler('pause', () => this.togglePause());
+      navigator.mediaSession.setActionHandler('play', () => { if (this.paused()) this.togglePause(); });
+      navigator.mediaSession.setActionHandler('pause', () => { if (!this.paused()) this.togglePause(); });
       navigator.mediaSession.setActionHandler('nexttrack', () => this.next());
       navigator.mediaSession.setActionHandler('previoustrack', () => this.previous());
       navigator.mediaSession.setActionHandler('stop', () => this.stop());

@@ -127,6 +127,39 @@ describe('TtsService', () => {
     expect(synth.spoken.length).toBe(2);
   });
 
+  it('handles repeated media-session play and pause without reversing the requested state', async () => {
+    const previous = Object.getOwnPropertyDescriptor(navigator, 'mediaSession');
+    const metadata = Object.getOwnPropertyDescriptor(globalThis, 'MediaMetadata');
+    const handlers = new Map<string, () => void>();
+    Object.defineProperty(navigator, 'mediaSession', { configurable: true, value: {
+      metadata: null, setActionHandler: (name: string, callback: () => void) => handlers.set(name, callback),
+    } });
+    Object.defineProperty(globalThis, 'MediaMetadata', { configurable: true, value: class {} });
+    try {
+      const service = new TtsService();
+      await service.init();
+      service.setQueue([article('a')]);
+      service.play(0);
+      handlers.get('play')?.();
+      expect(service.paused()).toBe(false);
+      expect(synth.paused).toBe(0);
+      handlers.get('pause')?.();
+      handlers.get('pause')?.();
+      expect(service.paused()).toBe(true);
+      expect(synth.paused).toBe(1);
+      expect(synth.resumed).toBe(0);
+      handlers.get('play')?.();
+      handlers.get('play')?.();
+      expect(service.paused()).toBe(false);
+      expect(synth.resumed).toBe(1);
+    } finally {
+      if (previous) Object.defineProperty(navigator, 'mediaSession', previous);
+      else Reflect.deleteProperty(navigator, 'mediaSession');
+      if (metadata) Object.defineProperty(globalThis, 'MediaMetadata', metadata);
+      else Reflect.deleteProperty(globalThis, 'MediaMetadata');
+    }
+  });
+
   it('removing the current item stops playback; earlier items shift the index', async () => {
     const service = new TtsService();
     await service.init();
