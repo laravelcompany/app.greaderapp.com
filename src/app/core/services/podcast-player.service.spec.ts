@@ -75,3 +75,42 @@ describe('podcast stale media events', () => {
     expect(service.duration()).toBeNaN();
   });
 });
+
+describe('podcast asynchronous playback cancellation', () => {
+  it('does not start an episode after stop while resume preferences are loading', async () => {
+    const { service } = player();
+    let resolve!: (value: { value: string | null }) => void;
+    const loading = new Promise<{ value: string | null }>(done => { resolve = done; });
+    service.preferences.get = async () => loading;
+    let starts = 0;
+    service.createAudio = () => ({
+      preload: '', playbackRate: 1, currentTime: 0, duration: 300, paused: false, src: '',
+      addEventListener: () => undefined, play: async () => { starts++; }, pause: () => undefined,
+    }) as unknown as HTMLAudioElement;
+    const request = service.play(0);
+    await Promise.resolve();
+    await Promise.resolve();
+    service.stop();
+    resolve({ value: '90' });
+    await request;
+    expect(starts).toBe(0);
+    expect(service.playing()).toBe(false);
+    expect(service.currentIndex()).toBe(-1);
+    expect(service.position()).toBe(0);
+  });
+
+  it('does not restore an old episode position into a newer episode', async () => {
+    const { service } = player();
+    let resolve!: (value: { value: string | null }) => void;
+    const loading = new Promise<{ value: string | null }>(done => { resolve = done; });
+    service.preferences.get = async ({ key }) => key.endsWith('track:a') ? loading : { value: '25' };
+    const request = service.play(0);
+    await Promise.resolve();
+    await Promise.resolve();
+    await service.play(1);
+    resolve({ value: '90' });
+    await request;
+    expect(service.current()?.articleId).toBe('b');
+    expect(service.position()).toBe(25);
+  });
+});

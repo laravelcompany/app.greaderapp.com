@@ -18,6 +18,7 @@ export class PodcastPlayerService {
   readonly rate = signal(1);
 
   private audio?: HTMLAudioElement;
+  private playbackGeneration = 0;
 
   current(): PodcastTrack | undefined {
     return this.queue()[this.currentIndex()];
@@ -39,7 +40,9 @@ export class PodcastPlayerService {
   async play(index: number): Promise<void> {
     const track = this.queue()[index];
     if (!track) return;
+    const generation = ++this.playbackGeneration;
     await this.persistPosition();
+    if (generation !== this.playbackGeneration) return;
     this.teardown();
     const audio = this.createAudio(track.url);
     audio.preload = 'auto';
@@ -53,10 +56,11 @@ export class PodcastPlayerService {
     this.currentIndex.set(index);
     this.position.set(0);
     this.duration.set(NaN);
-    await this.restorePosition(track);
+    await this.restorePosition(track, audio, generation);
+    if (generation !== this.playbackGeneration) return;
     this.updateMediaSession(track);
     await audio.play();
-    this.playing.set(true);
+    if (generation === this.playbackGeneration) this.playing.set(true);
   }
 
   toggle(): void {
@@ -95,6 +99,7 @@ export class PodcastPlayerService {
   }
 
   stop(): void {
+    ++this.playbackGeneration;
     void this.persistPosition();
     this.teardown();
     this.playing.set(false);
@@ -114,11 +119,11 @@ export class PodcastPlayerService {
   }
 
   /** Resume positions survive app restarts, keyed per track. */
-  private async restorePosition(track: PodcastTrack): Promise<void> {
+  private async restorePosition(track: PodcastTrack, audio: HTMLAudioElement, generation: number): Promise<void> {
     const { value } = await this.preferences.get({ key: `${POSITION_KEY_PREFIX}${track.id}` });
     const saved = value === null ? 0 : Number(value);
-    if (this.audio && Number.isFinite(saved) && saved > 5) {
-      this.audio.currentTime = saved;
+    if (generation === this.playbackGeneration && this.audio === audio && Number.isFinite(saved) && saved > 5) {
+      audio.currentTime = saved;
       this.position.set(saved);
     }
   }
