@@ -114,3 +114,44 @@ describe('podcast asynchronous playback cancellation', () => {
     expect(service.position()).toBe(25);
   });
 });
+
+describe('podcast media-session commands', () => {
+  it('treats play and pause as commands rather than toggles', async () => {
+    const previous = Object.getOwnPropertyDescriptor(navigator, 'mediaSession');
+    const handlers = new Map<string, () => void>();
+    Object.defineProperty(navigator, 'mediaSession', { configurable: true, value: {
+      metadata: null, setActionHandler: (name: string, callback: () => void) => handlers.set(name, callback),
+    } });
+    const oldMetadata = Object.getOwnPropertyDescriptor(globalThis, 'MediaMetadata');
+    Object.defineProperty(globalThis, 'MediaMetadata', { configurable: true, value: class {} });
+    try {
+      const { service } = player();
+      let plays = 0; let pauses = 0;
+      const audio = {
+        preload: '', playbackRate: 1, currentTime: 0, duration: 300, paused: true, src: '',
+        addEventListener: () => undefined,
+        play: async () => { plays++; audio.paused = false; },
+        pause: () => { pauses++; audio.paused = true; },
+      };
+      service.createAudio = () => audio as unknown as HTMLAudioElement;
+      await service.play(0);
+      handlers.get('play')?.();
+      await Promise.resolve();
+      expect(service.playing()).toBe(true);
+      expect(pauses).toBe(0);
+      handlers.get('pause')?.();
+      handlers.get('pause')?.();
+      expect(service.playing()).toBe(false);
+      expect(plays).toBe(1);
+      handlers.get('play')?.();
+      await Promise.resolve();
+      expect(service.playing()).toBe(true);
+      expect(plays).toBe(2);
+    } finally {
+      if (previous) Object.defineProperty(navigator, 'mediaSession', previous);
+      else Reflect.deleteProperty(navigator, 'mediaSession');
+      if (oldMetadata) Object.defineProperty(globalThis, 'MediaMetadata', oldMetadata);
+      else Reflect.deleteProperty(globalThis, 'MediaMetadata');
+    }
+  });
+});

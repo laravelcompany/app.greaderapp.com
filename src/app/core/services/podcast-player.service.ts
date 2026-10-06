@@ -138,8 +138,8 @@ export class PodcastPlayerService {
     if (!('mediaSession' in navigator)) return;
     try {
       navigator.mediaSession.metadata = new MediaMetadata({ title: track.title, artist: track.author ?? 'gReader News' });
-      navigator.mediaSession.setActionHandler('play', () => this.toggle());
-      navigator.mediaSession.setActionHandler('pause', () => this.toggle());
+      navigator.mediaSession.setActionHandler('play', () => { if (!this.audio || this.audio.paused) this.toggle(); });
+      navigator.mediaSession.setActionHandler('pause', () => { if (this.audio && !this.audio.paused) this.toggle(); });
       navigator.mediaSession.setActionHandler('nexttrack', () => void this.next());
       navigator.mediaSession.setActionHandler('previoustrack', () => void this.previous());
       navigator.mediaSession.setActionHandler('seekbackward', () => this.skip(-15));
